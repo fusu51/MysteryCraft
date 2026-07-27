@@ -74,9 +74,9 @@ class ToolMonitor:
                                 self.websocket_manager.send_to_thread(payload, thread_id)
                             )
                         else:
-                            #  FastAPI 的 WebSocket 依赖异步事件循环，且协程必须在创建它的循环中运行：
-                            #  如果当前线程和 WebSocket 管理器在同一个循环（比如在 FastAPI 的接口 / 任务中运行）：直接 create_task 效率最高；
-                            #  如果在不同循环 / 不同线程（比如同步线程调用）：必须用 asyncio.run_coroutine_threadsafe（线程安全的方式），否则会报错 “协程在错误的循环中运行”。
+                            # FastAPI 的 WebSocket 依赖异步事件循环，且协程必须在创建它的循环中运行：
+                            # 如果当前线程和 WebSocket 管理器在同一个循环（比如在 FastAPI 的接口 / 任务中运行）：直接 create_task 效率最高；
+                            # 如果在不同循环 / 不同线程（比如同步线程调用）：必须用 asyncio.run_coroutine_threadsafe（线程安全的方式），否则会报错 “协程在错误的循环中运行”。
                             # 如果在不同线程，使用 threadsafe 方法
                             asyncio.run_coroutine_threadsafe(
                                 self.websocket_manager.send_to_thread(payload, thread_id),

@@ -1,0 +1,20 @@
+services:
+  mysterycraft:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mysterycraft
+    ports:
+      - "9005:9005"
+    volumes:
+      - ./data/script.db:/app/data/script.db
+      - ./data/checkpoints.db:/app/data/checkpoints.db
+      - ./output:/app/output
+    environment:
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODEL_NAME=${MODEL_NAME}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - PORT=9005
+      - TZ=Asia/Shanghai
+    restart: unless-stopped

@@ -1,7 +1,7 @@
 # 定义一个网络搜索的工具！
 # ======================== 导入核心依赖 ========================
 # 类型注解：增强代码提示和静态检查能力
-from typing import  Literal
+from typing import Literal
 # LangChain 工具装饰器：将普通函数转为 Agent 可调用的工具
 from langchain_core.tools import tool
 # Tavily 官方客户端：实现网络搜索核心功能
@@ -27,18 +27,25 @@ tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 @tool
 def internet_search(
         query: str,
-        topic: Literal[ "news",  "finance",  "general"] = "general",
+        topic: Literal["news",  "finance",  "general"] = "general",
         max_results: int = 5,
         include_raw_content: bool = False
 ):
     """
-    根据用户问题，进行网络信息收！ 
-    注意：主要搜索公开的网络信息！如果指定查询数据库或者rag不能使用此工具！
+    根据用户问题进行网络信息搜索。
+
+    剧本杀创作时建议的搜索维度：
+    1. 时代背景细节 — 搜索服饰/建筑/交通/饮食/社会规则等，如 "1930年代上海法租界街景建筑风格"
+    2. 真实案件素材 — 搜索历史上真实犯罪案例，如 "民国时期著名谋杀案 犯罪手法"
+    3. 场景氛围描写 — 搜索特定场景的感官细节，如 "民国上海法租界梧桐树下 光影 气味"
+
+    注意：主要用于搜索公开的网络信息，数据库查询或内部知识库检索请用其他工具。
+
     :param query: 用户的查询信息
-    :param topic: 查询的类型
-    :param max_results: 返回的最大条数 
-    :param include_raw_content: 是否返回原内容 False 精简 True 详细
-    :return: 
+    :param topic: 查询类型 (news/finance/general)
+    :param max_results: 返回的最大条数
+    :param include_raw_content: 是否返回原始内容（False=精简, True=详细）
+    :return: 搜索结果
     """
     # 每次调用工具，都都会向前端推进调用进度！
     # 参数1： 工具的名字  参数2： 就是调用工具的参数信息
@@ -46,19 +53,5 @@ def internet_search(
                         args={"query": query, "topic": topic, "max_results": max_results,
                               "include_raw_content": include_raw_content})
 
-    return tavily_client.search(query = query, topic =  topic,
-                                max_results = max_results, include_raw_content = include_raw_content)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return tavily_client.search(query=query, topic=topic,
+                                max_results=max_results, include_raw_content=include_raw_content)

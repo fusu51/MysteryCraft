@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+mysterycraft-web/node_modules/
+mysterycraft-web/dist/
+.git/
+.env.example

@@ -1,5 +1,6 @@
 import uuid
 import asyncio
+import sys
 import uvicorn
 from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form
@@ -8,10 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 import shutil
+import os
 
 # Add project root to sys.path
 current_dir = Path(__file__).resolve().parent
 project_root = current_dir.parent
+sys.path.insert(0, str(project_root))
 
 # Import agent runner and monitor
 # 注意：agent.main_agent 导入时会初始化 main_agent，这可能需要几秒钟
@@ -37,6 +40,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
 class TaskRequest(BaseModel):
     query: str
     thread_id: str = None
@@ -55,7 +60,7 @@ async def startup_event():
 @app.post("/api/task")
 async def run_task(request: TaskRequest):
     # 1. [ID 初始化]
-    thread_id = request.thread_id or str(uuid.uuid4())
+    thread_id = (request.thread_id and request.thread_id != "string") and request.thread_id or str(uuid.uuid4())
 
     # 2. [后台执行] 异步运行 Agent，不阻塞主线程
     # 注意：这里简单的使用 asyncio.create_task 触发，由 main_agent 内部负责实时推送
@@ -125,6 +130,16 @@ async def download_file(path: str):
 
     # 3. [响应] 返回文件流 (浏览器自动触发下载)
     return FileResponse(abs_path, filename=abs_path.name)
+
+
+@app.get("/api/session-path/{thread_id}")
+async def get_session_path(thread_id: str):
+    """根据 thread_id 返回工作目录路径"""
+    session_dir = output_dir / f"session_{thread_id}"
+    if session_dir.exists():
+        return {"path": str(session_dir).replace("\\", "/")}
+    return {"path": None}
+
 
 
 @app.get("/api/files")
@@ -239,4 +254,4 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str):
         manager.disconnect(websocket, thread_id)
 
 if __name__ == "__main__":
-    uvicorn.run("api.server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api.server:app", host="0.0.0.0", port=int(os.getenv("PORT", "9005")))
