@@ -16,4 +16,5 @@ services:
       - TAVILY_API_KEY=${TAVILY_API_KEY}
       - PORT=8000
       - TZ=Asia/Shanghai
+      - ACCESS_TOKEN=${ACCESS_TOKEN}
     restart: unless-stopped
