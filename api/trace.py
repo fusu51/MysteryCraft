@@ -5,7 +5,7 @@ import json
 import functools
 from contextlib import contextmanager
 from typing import Optional
-from log_config import get_logger
+from api.log_config import get_logger
 
 logger = get_logger("mysterycraft")
 

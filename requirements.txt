@@ -2,6 +2,7 @@
 
 # LLM / Agent 框架
 langchain>=1.2.0
+langchain-openai>=1.1.0
 langgraph>=1.0.9
 langgraph-checkpoint-sqlite>=2.0
 deepagents>=0.4.0
