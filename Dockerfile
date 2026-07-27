@@ -2,7 +2,7 @@
 FROM node:20 AS frontend-builder
 
 WORKDIR /app/frontend
-COPY mysterycraft-web/package.json mysterycraft-web/package-lock.json ./
+COPY mysterycraft-web/package.json ./
 RUN npm install
 COPY mysterycraft-web/ ./
 RUN npm run build
