@@ -30,6 +30,14 @@ export default function App() {
 
     try {
       const res = await submitTask(q);
+
+      // 服务器繁忙或校验失败
+      if (res.status === "busy" || res.status === "error") {
+        alert(res.message || "请求失败，请稍后重试");
+        dispatch({ type: "SET_LOADING", isLoading: false });
+        return;
+      }
+
       dispatch({ type: "SET_THREAD", threadId: res.thread_id });
       addSession({
         thread_id: res.thread_id,
@@ -38,7 +46,7 @@ export default function App() {
         session_dir: "",
       });
     } catch (e) {
-      console.error("提交失败:", e);
+      alert("网络连接失败，请检查后端服务是否启动");
       dispatch({ type: "SET_LOADING", isLoading: false });
     }
   }, [query, dispatch, addSession]);

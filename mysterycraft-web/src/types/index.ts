@@ -1,8 +1,9 @@
 // ====== 后端 API 响应类型 ======
 
 export interface TaskResponse {
-    status: "started";
+    status: "started" | "busy" | "error";
     thread_id: string;
+    message?: string;
 }
 
 // ====== WebSocket 推送事件 ======
