@@ -30,10 +30,7 @@ _project_root = Path(__file__).parents[1]
 def _get_checkpointer():
     db_path = _project_root / "data" / "checkpoints.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    async def _init():
-        conn = await aiosqlite.connect(str(db_path))
-        return AsyncSqliteSaver(conn)
-    return asyncio.run(_init())
+    return AsyncSqliteSaver.from_conn_string(str(db_path))
 
 
 main_agent = create_deep_agent(

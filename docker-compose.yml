@@ -7,7 +7,7 @@ services:
     ports:
       - "9005:9005"
     volumes:
-      - ./data/checkpoints.db:/app/data/checkpoints.db
+      - ./data:/app/data
       - ./output:/app/output
     environment:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL}
