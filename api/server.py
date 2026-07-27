@@ -1,18 +1,18 @@
+import uvicorn
 import uuid
 import asyncio
 import sys
-import uvicorn
+import time
+import os
+import shutil
 from pathlib import Path
+from contextlib import asynccontextmanager
+from typing import List, Optional
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form, Header, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
-import shutil
-import os
-import time
-from contextlib import asynccontextmanager
-from data.script_db import ensure_db
 
 
 _MAX_CONCURRENT = 3
@@ -23,13 +23,13 @@ current_dir = Path(__file__).resolve().parent
 project_root = current_dir.parent
 sys.path.insert(0, str(project_root))
 
-# Import agent runner and monitor
-# 注意：agent.main_agent 导入时会初始化 main_agent，这可能需要几秒钟
+
 from agent.main_agent import run_deep_agent
 from api.monitor import manager
 from api.log_config import setup_logging
 from api.middleware import TraceMiddleware
 from api.trace import log_event
+from data.script_db import ensure_db
 
 
 # 挂载输出目录，以便前端访问生成的静态文件
