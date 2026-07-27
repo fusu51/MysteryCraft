@@ -204,5 +204,12 @@ def init_db():
     print(f" - 剧情模式：{len(plots)} 条")
 
 
+def ensure_db():
+    """应用启动时自动初始化数据库（Docker 友好）"""
+    if not DB_PATH.exists():
+        print(f"[DB] 数据库不存在，自动初始化: {DB_PATH}")
+        init_db()
+
+
 if __name__ == "__main__":
     init_db()

@@ -13,6 +13,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from tools.pdf_tools import convert_md_to_pdf as _convert_pdf
+from data.script_db import ensure_db
 
 
 _MAX_CONCURRENT = 3
@@ -45,6 +46,7 @@ updated_dir.mkdir(exist_ok=True)
 async def lifespan(app: FastAPI):
     # === startup ===
     setup_logging()
+    ensure_db()
 
     now = time.time()
     cleaned = 0

@@ -21,9 +21,6 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r req
 # 项目代码
 COPY . .
 
-# 初始化 SQLite 数据库
-RUN chmod -R 777 /app/data && python data/script_db.py
-
 # 前端 dist
 COPY --from=frontend-builder /app/frontend/dist /var/www/html
 
