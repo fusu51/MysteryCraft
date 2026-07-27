@@ -11,7 +11,7 @@ from langchain_core.tools import tool
 from api.monitor import monitor
 from api.context import get_session_context
 from utils.path_utils import resolve_path
-from utils.word_converter import convert_md_to_pdf_via_word
+from utils.word_converter import convert_md_to_pdf as convert_md_to_pdf_via_word
 
 
 @tool
