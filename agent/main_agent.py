@@ -24,9 +24,14 @@ from api.context import set_session_context, reset_session_context, set_thread_c
 from api.trace import log_event
 
 
+_project_root = Path(__file__).parents[1]
+
+
 def _get_checkpointer():
+    db_path = _project_root / "data" / "checkpoints.db"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     async def _init():
-        conn = await aiosqlite.connect("data/checkpoints.db")
+        conn = await aiosqlite.connect(str(db_path))
         return AsyncSqliteSaver(conn)
     return asyncio.run(_init())
 
