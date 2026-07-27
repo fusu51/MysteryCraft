@@ -37,3 +37,11 @@ export async function getSessionPath(threadId: string): Promise<string | null> {
     const data = await res.json();
     return data.path || null;
 }
+
+export async function convertToPdf(filePath: string): Promise<{status: string; pdf_path?: string; message?: string}> {
+    const res = await fetch(`${BASE}/api/convert-pdf?path=${encodeURIComponent(filePath)}`, {
+        method: "POST",
+    });
+    return res.json();
+}
+

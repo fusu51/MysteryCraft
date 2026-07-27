@@ -12,6 +12,7 @@ import shutil
 import os
 import time
 from contextlib import asynccontextmanager
+from tools.pdf_tools import convert_md_to_pdf as _convert_pdf
 
 
 _MAX_CONCURRENT = 3
@@ -144,6 +145,27 @@ async def upload_files(files: List[UploadFile] = File(...), thread_id: str = For
 
     # 3. [响应] 返回成功保存的文件列表
     return {"status": "uploaded", "files": saved_files}
+
+
+@app.post("/api/convert-pdf")
+async def convert_to_pdf(path: str):
+    """将指定 Markdown 文件转为 PDF"""
+    try:
+        abs_path = Path(path).resolve()
+        if not abs_path.is_relative_to(output_dir.resolve()):
+            return {"status": "error", "message": "拒绝访问"}
+    except Exception:
+        return {"status": "error", "message": "无效路径"}
+
+    if not abs_path.exists() or abs_path.suffix != ".md":
+        return {"status": "error", "message": "文件不存在或不是 Markdown"}
+
+    result = _convert_pdf.invoke({"md_filename": str(abs_path)})
+
+    if "已生成" in result or "PDF" in result:
+        pdf_path = abs_path.with_suffix(".pdf")
+        return {"status": "ok", "pdf_path": str(pdf_path).replace("\\", "/")}
+    return {"status": "error", "message": result}
 
 
 @app.get("/api/download")
