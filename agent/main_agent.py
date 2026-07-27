@@ -1,7 +1,9 @@
 from agent.subagents.script_structure_agent import script_structure_agent
 from agent.subagents.logic_validator_agent import logic_validator_agent
 from agent.subagents.network_search_agent import network_search_agent
-from langgraph.checkpoint.memory import InMemorySaver
+import asyncio
+import aiosqlite
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from pathlib import Path
 
 # main_agent tool导入
@@ -25,17 +27,24 @@ from api.context import set_session_context, reset_session_context, set_thread_c
 from langchain_core.messages import AIMessage
 
 
+def _get_checkpointer():
+    async def _init():
+        conn = await aiosqlite.connect("data/checkpoints.db")
+        return AsyncSqliteSaver(conn)
+    return asyncio.run(_init())
+
+
 main_agent = create_deep_agent(
-   model=model,
-   system_prompt=main_agent_content['system_prompt'],
-   tools=[convert_md_to_pdf, read_file_content,
-          build_character_sheet, generate_clue_cards, build_timeline, generate_dm_manual],
-   checkpointer=InMemorySaver(),
-   subagents=[
+    model=model,
+    system_prompt=main_agent_content['system_prompt'],
+    tools=[convert_md_to_pdf, read_file_content,
+           build_character_sheet, generate_clue_cards, build_timeline, generate_dm_manual],
+    checkpointer=_get_checkpointer(),
+    subagents=[
        script_structure_agent,
        network_search_agent,
        logic_validator_agent
-   ]
+    ]
 )
 
 # 执行
