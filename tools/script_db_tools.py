@@ -1,11 +1,20 @@
-"""剧本数据库工具 ———— 查询函数 + @tool 包装"""
+"""剧本数据库工具 — 查询函数 + @tool 包装 + 进度计数"""
 import sqlite3
 from pathlib import Path
 from langchain_core.tools import tool
 from api.monitor import monitor
-
+from api.context import get_thread_context
 
 DB_PATH = Path(__file__).resolve().parents[1] / "data" / "script.db"
+
+# 模块级计数器
+_db_counter: dict[str, int] = {}
+TOTAL_DB_TOOLS = 4
+
+
+def _next_count(thread_id: str) -> int:
+    _db_counter[thread_id] = _db_counter.get(thread_id, 0) + 1
+    return _db_counter[thread_id]
 
 
 def _connect():
@@ -14,7 +23,8 @@ def _connect():
     return conn
 
 
-# ---------- 裸查询函数 ----------
+# ---------- 裸查询函数（不变）----------
+
 def query_characters(era: str = None, role_type: str = None, limit: int = 10) -> str:
     conn = _connect()
     cursor = conn.cursor()
@@ -34,7 +44,7 @@ def query_characters(era: str = None, role_type: str = None, limit: int = 10) ->
         return "未找到匹配的角色原型"
     result = "角色原型列表：\n"
     for r in rows:
-        result += f"  [{r['role_type']}] {r['name']} —— {r['personality']} | {r['description']}（适配：[{r['era_fit']}]）\n"
+        result += f"  [{r['role_type']}] {r['name']} — {r['personality']} | {r['description']}（适配：[{r['era_fit']}]）\n"
     return result
 
 
@@ -57,7 +67,7 @@ def query_tricks(category: str = None, difficulty: int = None, limit: int = 10) 
         return "未找到匹配的诡计模式"
     result = "诡计模式列表：\n"
     for r in rows:
-        result += (f"  [{r['category']}] {r['name']} （难度：{'★'*r['difficulty']}） —— {r['description']} | "
+        result += (f"  [{r['category']}] {r['name']} （难度：{'★'*r['difficulty']}） — {r['description']} | "
                    f"参考：{r['classic_examples']}\n")
     return result
 
@@ -107,30 +117,35 @@ def query_plots(pattern_type: str = None, limit: int = 10) -> str:
     return result
 
 
-# ---------- @tool 包装 ----------
+# ---------- @tool 包装（带进度计数）----------
+
 @tool
 def search_character_archetypes(era: str = "", role_type: str = "") -> str:
     """从角色原型库中查询可用的角色原型。可筛选时代（era: 民国/现代/古代）和角色类型（role_type: 凶手/侦探/嫌疑人/帮凶）"""
-    monitor.report_tool("角色原型查询", {"era": era, "role_type": role_type})
+    c = _next_count(get_thread_context() or "unknown")
+    monitor.report_tool(f"角色原型查询 ({c}/{TOTAL_DB_TOOLS})", {"era": era, "role_type": role_type})
     return query_characters(era=era or None, role_type=role_type or None)
 
 
 @tool
 def search_trick_patterns(category: str = "", difficulty: int = 0) -> str:
     """从诡计模式库中查询推理诡计。可筛选分类(category: 密室/不在场证明/身份诡计/毒杀/心理诡计)和最大难度(difficulty: 1-5)"""
-    monitor.report_tool("诡计模式查询", {"category": category, "difficulty": difficulty})
+    c = _next_count(get_thread_context() or "unknown")
+    monitor.report_tool(f"诡计模式查询 ({c}/{TOTAL_DB_TOOLS})", {"category": category, "difficulty": difficulty})
     return query_tricks(category=category or None, difficulty=difficulty if difficulty > 0 else None)
 
 
 @tool
 def search_script_templates(template_type: str = "", player_count: int = 0) -> str:
     """从剧本模板库中查询剧本结构模板。可筛选类型(template_type: 本格/变格/阵营/情感/恐怖)和人数(player_count)"""
-    monitor.report_tool("剧本模板查询", {"template_type": template_type, "player_count": player_count})
+    c = _next_count(get_thread_context() or "unknown")
+    monitor.report_tool(f"剧本模板查询 ({c}/{TOTAL_DB_TOOLS})", {"template_type": template_type, "player_count": player_count})
     return query_templates(template_type=template_type or None, player_count=player_count if player_count > 0 else None)
 
 
 @tool
 def search_plot_patterns(pattern_type: str = "") -> str:
     """从剧情模式库中查询剧情框架。可筛选类型(pattern_type: 封闭空间/连续杀人/遗嘱争夺/身份互换/复仇/心理操纵)"""
-    monitor.report_tool("剧情模式查询", {"pattern_type": pattern_type})
+    c = _next_count(get_thread_context() or "unknown")
+    monitor.report_tool(f"剧情模式查询 ({c}/{TOTAL_DB_TOOLS})", {"pattern_type": pattern_type})
     return query_plots(pattern_type=pattern_type or None)

@@ -22,6 +22,7 @@ __pycache__/
 # ========================
 # 运行时数据
 # ========================
+logs/
 output/
 updated/
 data/script.db

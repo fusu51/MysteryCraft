@@ -1,12 +1,15 @@
+import time
+import shutil
+from pathlib import Path
+
 from agent.subagents.script_structure_agent import script_structure_agent
 from agent.subagents.logic_validator_agent import logic_validator_agent
 from agent.subagents.network_search_agent import network_search_agent
+
 import asyncio
 import aiosqlite
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-from pathlib import Path
 
-# main_agent tool导入
 from tools.pdf_tools import convert_md_to_pdf
 from tools.upload_file_read_tool import read_file_content
 from tools.script_tools import build_character_sheet, generate_clue_cards, build_timeline, generate_dm_manual
@@ -17,14 +20,8 @@ from agent.llm import model
 from agent.prompts import main_agent_content
 
 from api.monitor import monitor
-import asyncio
-import uuid
-import shutil
-from pathlib import Path
-
 from api.context import set_session_context, reset_session_context, set_thread_context
-
-from langchain_core.messages import AIMessage
+from api.trace import log_event
 
 
 def _get_checkpointer():
@@ -41,83 +38,51 @@ main_agent = create_deep_agent(
            build_character_sheet, generate_clue_cards, build_timeline, generate_dm_manual],
     checkpointer=_get_checkpointer(),
     subagents=[
-       script_structure_agent,
-       network_search_agent,
-       logic_validator_agent
-    ]
+        script_structure_agent,
+        network_search_agent,
+        logic_validator_agent,
+    ],
 )
 
-# 执行
-"""
-  1. 执行主智能体 一定选异步，原因：对应多个客户端
-  2. 什么时候触发我们智能体的调用或者执行？？？
-  3. 客户端 -》 api/task -> fastapi 接口 -》 异步执行 -》 main_agent的运行 （异步方法）
-  4. main_agent执行stream流式处理 -》 调用工具 -》 已经埋好了点  
-                                   调用子智能体 -》 结果解析 -》 name = task -> monitor -> 发送子智能体
-                                   调用最终结果 -》 结果 -》 monitor -> 发送结果的方法
-                                   开启调用以后 -》 当前会话 -》 文件夹地址 -》 推送到前端
-"""
+project_root_path = Path(__file__).parents[1].resolve()
 
 
-project_root_path = Path(__file__).parents[1].resolve()  # 绝对 解析路径标识以及软连接
-# project_root_path = Path(__file__).parents[1].absolute() # 绝对
-# main_agent.invoke()
-# main_agent.stream()
-# main_agent.astream() [选他]
+async def run_deep_agent(task_query: str, session_id: str):
+    """异步流式执行主智能体，全过程 trace 日志"""
+    _start = time.perf_counter()
 
+    log_event(session_id, "TASK", f"任务开始 | query={task_query[:50]}...")
+    log_event(session_id, "DIM", f"当前会话的main_agent开始执行了！ 会话id:{session_id}")
 
-async def run_deep_agent(task_query, session_id):
-    """
-    定义流式+异步执行主智能体！！
-    执行过程中，返回  会话文件化返回  调用子智能体  调用最终结果 （monitor）
-    task_query: 前端提问的问题
-    session_id: 每个前端会话对应的标识 （1.存储session_id ContextVars 2.session_id 给他创建对应的output输出地址）
-    """
-    print(f"当前会话的main_agent开始执行了！ 会话id:{session_id}")
-    # 准备工作 【1. session_dir（前端） 2. relative_session_dir (大模型) 3. 上传的文件拼接上传文件专属提示词】
-    # project_root_path / output / session_session_id(uuid)
-    # 当前会话存储生成文件的专属文件夹
+    # ===== 准备阶段 =====
     session_dir = project_root_path / "output" / f"session_{session_id}"
-    # 文件夹可能没有，第一次请求要创建
     session_dir.mkdir(parents=True, exist_ok=True)
-    # \  \n \t -> /
     session_dir_str = str(session_dir).replace("\\", "/")
-    # 获取相对文件夹
-    # session_dir : project_root_path / output / session_session_id(uuid)
-    # project_root_path : project_root_path
-    # relative_session_dir_str: / output / session_session_id(uuid)
     relative_session_dir_str = str(session_dir.relative_to(project_root_path)).replace("\\", "/")
 
-    # 处理上传文件 （updated / session_session_id）
+    # 上传文件处理
     updated_dir_path = project_root_path / "updated" / f"session_{session_id}"
-    updated_info_prompt = ""  # 有上传文件，拼接上传文件专属解析位置的提示词
+    updated_info_prompt = ""
     if updated_dir_path.exists():
-        # 有
         files = [f.name for f in updated_dir_path.iterdir() if f.is_file()]
-        # 将上传文件统一赋值到 output_dir 方便前端统一读取 session_dir
         if files:
             for filename in files:
-                # 将原文件 -》 复制 -》 目标文件中  （copy2 保留原文件修改时间和权限等元数据）
                 shutil.copy2(updated_dir_path / filename, session_dir / filename)
-            # 构建提示词！告诉大模型，有上传文件，你要读取上传文件！！
-            updated_info_prompt = (f"\n    [已上传文件] 已加载到工作目录:\n" +
-                                   "\n".join([f"    - {f}" for f in files]) +
-                                   "\n    请优先使用工具（read_file_content）读取并参考这些文件。")
+            updated_info_prompt = (
+                    f"\n    [已上传文件] 已加载到工作目录:\n" +
+                    "\n".join([f"    - {f}" for f in files]) +
+                    "\n    请优先使用工具（read_file_content）读取并参考这些文件。"
+            )
+            log_event(session_id, "DIM", f"上传文件: {len(files)} 个")
 
-    # 继续准备 1. 当前会话的对应的session_id session_dir 存储到contextVars [后续工具获取，socket -> 推送消息] 2.调用monitor给前端推送session_dir信息
-    session_dir_token = set_session_context(session_dir_str)  # 存储的当前会话对应的文件夹地址
-    session_id_token = set_thread_context(session_id)  # 获取当前会话的session_id对应socket
+    # ContextVar 隔离
+    session_dir_token = set_session_context(session_dir_str)
+    session_id_token = set_thread_context(session_id)
+    monitor.report_session_dir(session_dir_str)
 
-    monitor.report_session_dir(session_dir_str)  # 当前会话对应的文件夹地址推送给起前端！
+    # ===== 执行 =====
+    config = {"configurable": {"thread_id": session_id}}
 
-    # 执行main_agent
-    config = {
-        "configurable": {
-            "thread_id": session_id
-        }
-    }
-
-    # 构建提示词
     path_instruction = f"""
     【工作环境指令】
     工作目录: {relative_session_dir_str}
@@ -134,47 +99,70 @@ async def run_deep_agent(task_query, session_id):
     4. 一律使用相对路径（仅文件名或 '文件名.md'），禁止使用绝对路径。
     5. 若存在上传文件，请先分析内容再开始创作。
     """
-    # 反馈结果
+
+    tool_count = 0
+    agent_call_count = 0
+
     try:
-        # 执行
         async for chunk in main_agent.astream(
-                {"messages":
-                     [{"role": "user",
-                       "content": task_query + path_instruction}]},
-                config=config):
-            # {"model [大模型决定调用工具 子智能体  最终结果] / tools" : {messages:[xxx...]}}
+                {"messages": [{"role": "user", "content": task_query + path_instruction}]},
+                config=config,
+        ):
             for node_name, state in chunk.items():
                 if not state or "messages" not in state:
                     continue
                 messages = state["messages"]
-                if messages and isinstance(messages, list):
-                    last_msg = messages[-1]
-                    if node_name == 'model':
-                        if last_msg.tool_calls:
-                            # 工具和子智能体
-                            for tool_call in last_msg.tool_calls:
-                                """
-                                  tool_call = {
-                                      name: task
-                                      args:{
-                                          subagent_type:子智能体的名字
-                                          description:子智能体的描述
-                                      }
-                                  }                                
-                                """
-                                if tool_call['name'] == 'task':
-                                    # 调用某个子智能体
-                                    monitor.report_assistant(tool_call['args']['subagent_type'],
-                                                             {'description': tool_call['args']['description']})
-                        elif last_msg.content:
-                            # 最终结果
-                            print(f"主智能体执行结果，最终结果：{last_msg.content[:100]}")
-                            monitor.report_task_result(last_msg.content)
+                if not (messages and isinstance(messages, list)):
+                    continue
+
+                last_msg = messages[-1]
+
+                if node_name == "model":
+                    if last_msg.tool_calls:
+                        for tool_call in last_msg.tool_calls:
+                            tool_name = tool_call.get("name", "?")
+                            tool_count += 1
+
+                            if tool_name == "task":
+                                # 子智能体调用
+                                agent_call_count += 1
+                                subagent = tool_call["args"]["subagent_type"]
+                                desc_len = len(tool_call["args"].get("description", ""))
+                                log_event(session_id, "AGENT", f"{subagent} 调用 (#{agent_call_count})",
+                                          detail={"desc_len": desc_len})
+                                monitor.report_assistant(subagent, {"description": tool_call["args"]["description"]})
+                            else:
+                                # 主智能体直接调工具
+                                log_event(session_id, "TOOL", f"{tool_name} (#{tool_count})",
+                                          detail={"args": tool_call.get("args", {})})
+
+                    elif last_msg.content:
+                        # 最终输出
+                        content_preview = last_msg.content[:200].replace("\n", " ")
+                        log_event(session_id, "TASK", f"Agent 输出: {content_preview}...")
+                        monitor.report_task_result(last_msg.content)
+
+                elif node_name == "tools":
+                    # 工具执行完毕（仅检测错误）
+                    for msg in messages:
+                        if hasattr(msg, "content") and isinstance(msg.content, str):
+                            if "错误" in msg.content[:50] or "失败" in msg.content[:50]:
+                                name = getattr(msg, "name", "?")
+                                log_event(session_id, "ERROR", f"工具 {name} 异常: {msg.content[:200]}",
+                                          level="ERROR")
 
     except Exception as e:
-        # 报错推送错误信息给前端
+        log_event(session_id, "ERROR", f"执行异常: {e}", level="ERROR")
         monitor._emit("error", f"执行主智能发生异常信息：{str(e)}")
     finally:
-        # 释放存储的地址和session_id
         reset_session_context(session_dir_token, session_id_token)
 
+        # 统计输出文件
+        file_count = 0
+        if session_dir.exists():
+            file_count = sum(1 for _ in session_dir.rglob("*") if _.is_file())
+
+        total_sec = time.perf_counter() - _start
+        log_event(session_id, "TASK", f"任务结束 | "
+                                      f"耗时={total_sec:.0f}s | 工具调用={tool_count}次 | 子智能体={agent_call_count}次 | "
+                                      f"输出文件={file_count}个")

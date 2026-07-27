@@ -1,6 +1,7 @@
 """
 剧本杀专用工具集 — 角色卡生成、线索卡生成、时间线生成、线索链校验
 """
+import time
 from pathlib import Path
 from langchain_core.tools import tool
 from api.monitor import monitor
@@ -38,6 +39,7 @@ def build_character_sheet(
     :param filename: 输出的Markdown文件名（如"角色_管家_张伯.md"）
     :return: 生成结果提示
     """
+    _t0 = time.perf_counter()
     monitor.report_tool("角色卡生成器", {"character_name": character_name, "filename": filename})
 
     markdown_content = f"""# 角色剧本 — {character_name}
@@ -109,6 +111,8 @@ def build_character_sheet(
     path_obj = Path(file_path)
     path_obj.parent.mkdir(parents=True, exist_ok=True)
     path_obj.write_text(markdown_content, encoding='utf-8')
+    dt = time.perf_counter() - _t0
+    monitor.report_tool(f"角色卡生成器 完成 ({dt:.1f}s)", {"character_name": character_name})
     return f"角色剧本 '{filename}' 已生成。"
 
 
@@ -125,6 +129,7 @@ def generate_clue_cards(
     :param filename: 输出的Markdown文件名（如"线索卡汇总.md"）
     :return: 生成结果提示
     """
+    _t0 = time.perf_counter()
     monitor.report_tool("线索卡生成器", {"filename": filename})
 
     markdown_content = f"""# 线索卡汇总
@@ -155,6 +160,8 @@ def generate_clue_cards(
     path_obj = Path(file_path)
     path_obj.parent.mkdir(parents=True, exist_ok=True)
     path_obj.write_text(markdown_content, encoding='utf-8')
+    dt = time.perf_counter() - _t0
+    monitor.report_tool(f"线索卡生成器 完成 ({dt:.1f}s)", {"filename": filename})
     return f"线索卡汇总 '{filename}' 已生成。"
 
 
@@ -170,6 +177,7 @@ def build_timeline(
     :param filename: 输出的Markdown文件名（如"案件时间线.md"）
     :return: 生成结果提示
     """
+    _t0 = time.perf_counter()
     monitor.report_tool("时间线生成器", {"filename": filename})
 
     markdown_content = f"""# 案件时间线
@@ -202,6 +210,8 @@ def build_timeline(
     path_obj = Path(file_path)
     path_obj.parent.mkdir(parents=True, exist_ok=True)
     path_obj.write_text(markdown_content, encoding='utf-8')
+    dt = time.perf_counter() - _t0
+    monitor.report_tool(f"时间线生成器 完成 ({dt:.1f}s)", {"filename": filename})
     return f"案件时间线 '{filename}' 已生成。"
 
 
@@ -225,6 +235,7 @@ def generate_dm_manual(
     :param filename: 输出的Markdown文件名（如"DM_手册.md"）
     :return: 生成结果提示
     """
+    _t0 = time.perf_counter()
     monitor.report_tool("DM手册生成器", {"filename": filename})
 
     markdown_content = f"""# 🎭 组织者手册（DM 专用）
@@ -273,4 +284,6 @@ def generate_dm_manual(
     path_obj = Path(file_path)
     path_obj.parent.mkdir(parents=True, exist_ok=True)
     path_obj.write_text(markdown_content, encoding='utf-8')
+    dt = time.perf_counter() - _t0
+    monitor.report_tool(f"DM手册生成器 完成 ({dt:.1f}s)", {"filename": filename})
     return f"组织者手册 '{filename}' 已生成。"

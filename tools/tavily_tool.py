@@ -1,43 +1,37 @@
-# 定义一个网络搜索的工具！
-# ======================== 导入核心依赖 ========================
-# 类型注解：增强代码提示和静态检查能力
+"""网络搜索工具 — Tavily 封装 + 硬计数器"""
+import time
+import os
 from typing import Literal
-# LangChain 工具装饰器：将普通函数转为 Agent 可调用的工具
 from langchain_core.tools import tool
-# Tavily 官方客户端：实现网络搜索核心功能
 from tavily import TavilyClient
+from dotenv import load_dotenv
 
-# 系统/第三方依赖
-import os  # 系统路径/环境变量处理
-from dotenv import load_dotenv  # 加载 .env 文件中的环境变量
-
-# 自定义模块：工具调用埋点监控（需确保 api 模块可导入）
 from api.monitor import monitor
+from api.context import get_thread_context
 
-# ======================== 初始化配置 ========================
-# 加载项目根目录的 .env 文件，读取环境变量（如 TAVILY_API_KEY）
 load_dotenv()
 
-
-# 步骤1： 定义一个TavilyClient对象
 tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
+# 模块级计数器（每个 thread 独立计数）
+_tavily_counter: dict[str, int] = {}
+MAX_SEARCH = 8
 
-# 步骤2： 定义一个网络搜索工具
+
 @tool
 def internet_search(
         query: str,
-        topic: Literal["news",  "finance",  "general"] = "general",
+        topic: Literal["news", "finance", "general"] = "general",
         max_results: int = 5,
-        include_raw_content: bool = False
+        include_raw_content: bool = False,
 ):
     """
     根据用户问题进行网络信息搜索。
 
     剧本杀创作时建议的搜索维度：
-    1. 时代背景细节 — 搜索服饰/建筑/交通/饮食/社会规则等，如 "1930年代上海法租界街景建筑风格"
-    2. 真实案件素材 — 搜索历史上真实犯罪案例，如 "民国时期著名谋杀案 犯罪手法"
-    3. 场景氛围描写 — 搜索特定场景的感官细节，如 "民国上海法租界梧桐树下 光影 气味"
+    1. 时代背景细节 — 搜索服饰/建筑/交通/饮食/社会规则等
+    2. 真实案件素材 — 搜索历史上真实犯罪案例
+    3. 场景氛围描写 — 搜索特定场景的感官细节
 
     注意：主要用于搜索公开的网络信息，数据库查询或内部知识库检索请用其他工具。
 
@@ -47,11 +41,35 @@ def internet_search(
     :param include_raw_content: 是否返回原始内容（False=精简, True=详细）
     :return: 搜索结果
     """
-    # 每次调用工具，都都会向前端推进调用进度！
-    # 参数1： 工具的名字  参数2： 就是调用工具的参数信息
-    monitor.report_tool(tool_name="网络搜索工具",
-                        args={"query": query, "topic": topic, "max_results": max_results,
-                              "include_raw_content": include_raw_content})
+    thread_id = get_thread_context() or "unknown"
+    _tavily_counter.setdefault(thread_id, 0)
 
-    return tavily_client.search(query=query, topic=topic,
-                                max_results=max_results, include_raw_content=include_raw_content)
+    # 硬上限拦截
+    if _tavily_counter[thread_id] >= MAX_SEARCH:
+        return (
+            f"⚠️ 网络搜索已达上限（{MAX_SEARCH}次）。"
+            f"已搜索 {_tavily_counter[thread_id]} 次，请基于已有信息继续工作，不要再发起搜索。"
+        )
+
+    _tavily_counter[thread_id] += 1
+    current = _tavily_counter[thread_id]
+
+    _t0 = time.perf_counter()
+    monitor.report_tool(
+        tool_name=f"网络搜索 ({current}/{MAX_SEARCH})",
+        args={"query": query, "topic": topic},
+    )
+
+    result = tavily_client.search(
+        query=query, topic=topic,
+        max_results=max_results, include_raw_content=include_raw_content,
+    )
+
+    dt = time.perf_counter() - _t0
+    result_len = len(str(result))
+    monitor.report_tool(
+        tool_name=f"网络搜索 ({current}/{MAX_SEARCH}) 完成",
+        args={"duration": round(dt, 2), "result_chars": result_len},
+    )
+
+    return result
