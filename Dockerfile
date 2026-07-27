@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt aiosqlite
+RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt aiosqlite
 
 # 项目代码
 COPY . .
