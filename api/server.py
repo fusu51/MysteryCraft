@@ -66,14 +66,20 @@ async def startup_event():
 
 @app.post("/api/task")
 async def run_task(request: TaskRequest):
-    # 1. [ID 初始化]
+    # 1. [输入校验]
+    query = (request.query or "").strip()
+    if not query:
+        return {"status": "error", "message": "query 不能为空"}
+    if len(query) > 3000:
+        return {"status": "error", "message": f"query 过长（{len(query)}字，上限 3000）"}
+
+    # 2. [ID 初始化]
     thread_id = (request.thread_id and request.thread_id != "string") and request.thread_id or str(uuid.uuid4())
 
-    # 2. [后台执行] 异步运行 Agent，不阻塞主线程
-    # 注意：这里简单的使用 asyncio.create_task 触发，由 main_agent 内部负责实时推送
-    asyncio.create_task(run_deep_agent(request.query, thread_id))
+    # 3. [后台执行]
+    asyncio.create_task(run_deep_agent(query, thread_id))
 
-    # 3. [立即响应]
+    # 4. [立即响应]
     return {"status": "started", "thread_id": thread_id}
 
 

@@ -106,14 +106,17 @@ def build_character_sheet(
 > 🤫 **DM备注**：{real_identity}
 """
 
-    session_dir = get_session_context()
-    file_path = resolve_path(filename, session_dir)
-    path_obj = Path(file_path)
-    path_obj.parent.mkdir(parents=True, exist_ok=True)
-    path_obj.write_text(markdown_content, encoding='utf-8')
-    dt = time.perf_counter() - _t0
-    monitor.report_tool(f"角色卡生成器 完成 ({dt:.1f}s)", {"character_name": character_name})
-    return f"角色剧本 '{filename}' 已生成。"
+    try:
+        session_dir = get_session_context()
+        file_path = resolve_path(filename, session_dir)
+        path_obj = Path(file_path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        path_obj.write_text(markdown_content, encoding='utf-8')
+        dt = time.perf_counter() - _t0
+        monitor.report_tool(f"角色卡生成器 完成 ({dt:.1f}s)", {"character_name": character_name})
+        return f"角色剧本 '{filename}' 已生成。"
+    except Exception as e:
+        return f"❌ 角色剧本 '{filename}' 写入失败: {e}。请检查磁盘空间和目录权限。"
 
 
 @tool
@@ -155,14 +158,17 @@ def generate_clue_cards(
 如玩家在推理中卡住，DM 可适当提示上述路径中的中间结论。
 """
 
-    session_dir = get_session_context()
-    file_path = resolve_path(filename, session_dir)
-    path_obj = Path(file_path)
-    path_obj.parent.mkdir(parents=True, exist_ok=True)
-    path_obj.write_text(markdown_content, encoding='utf-8')
-    dt = time.perf_counter() - _t0
-    monitor.report_tool(f"线索卡生成器 完成 ({dt:.1f}s)", {"filename": filename})
-    return f"线索卡汇总 '{filename}' 已生成。"
+    try:
+        session_dir = get_session_context()
+        file_path = resolve_path(filename, session_dir)
+        path_obj = Path(file_path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        path_obj.write_text(markdown_content, encoding='utf-8')
+        dt = time.perf_counter() - _t0
+        monitor.report_tool(f"线索卡生成器 完成 ({dt:.1f}s)", {"filename": filename})
+        return f"线索卡汇总 '{filename}' 已生成。"
+    except Exception as e:
+        return f"❌ 线索卡汇总 '{filename}' 写入失败: {e}。请检查磁盘空间和目录权限。"
 
 
 @tool
@@ -205,14 +211,17 @@ def build_timeline(
 - **报警/通知DM时间**：（填充）
 """
 
-    session_dir = get_session_context()
-    file_path = resolve_path(filename, session_dir)
-    path_obj = Path(file_path)
-    path_obj.parent.mkdir(parents=True, exist_ok=True)
-    path_obj.write_text(markdown_content, encoding='utf-8')
-    dt = time.perf_counter() - _t0
-    monitor.report_tool(f"时间线生成器 完成 ({dt:.1f}s)", {"filename": filename})
-    return f"案件时间线 '{filename}' 已生成。"
+    try:
+        session_dir = get_session_context()
+        file_path = resolve_path(filename, session_dir)
+        path_obj = Path(file_path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        path_obj.write_text(markdown_content, encoding='utf-8')
+        dt = time.perf_counter() - _t0
+        monitor.report_tool(f"时间线生成器 完成 ({dt:.1f}s)", {"filename": filename})
+        return f"案件时间线 '{filename}' 已生成。"
+    except Exception as e:
+        return f"❌ 案件时间线 '{filename}' 写入失败: {e}。请检查磁盘空间和目录权限。"
 
 
 @tool
@@ -279,11 +288,14 @@ def generate_dm_manual(
 > 🤫 祝主持顺利。记住：你的职责是让每个人都感觉自己是主角。
 """
 
-    session_dir = get_session_context()
-    file_path = resolve_path(filename, session_dir)
-    path_obj = Path(file_path)
-    path_obj.parent.mkdir(parents=True, exist_ok=True)
-    path_obj.write_text(markdown_content, encoding='utf-8')
-    dt = time.perf_counter() - _t0
-    monitor.report_tool(f"DM手册生成器 完成 ({dt:.1f}s)", {"filename": filename})
-    return f"组织者手册 '{filename}' 已生成。"
+    try:
+        session_dir = get_session_context()
+        file_path = resolve_path(filename, session_dir)
+        path_obj = Path(file_path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        path_obj.write_text(markdown_content, encoding='utf-8')
+        dt = time.perf_counter() - _t0
+        monitor.report_tool(f"DM手册生成器 完成 ({dt:.1f}s)", {"filename": filename})
+        return f"组织者手册 '{filename}' 已生成。"
+    except Exception as e:
+        return f"❌ 组织者手册 '{filename}' 写入失败: {e}。请检查磁盘空间和目录权限。"

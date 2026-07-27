@@ -60,10 +60,15 @@ def internet_search(
         args={"query": query, "topic": topic},
     )
 
-    result = tavily_client.search(
-        query=query, topic=topic,
-        max_results=max_results, include_raw_content=include_raw_content,
-    )
+    try:
+        result = tavily_client.search(
+            query=query, topic=topic,
+            max_results=max_results, include_raw_content=include_raw_content,
+        )
+    except Exception as e:
+        return (f"❌ 网络搜索失败: {e}。"
+                f"请检查 Tavily API Key 是否有效，或网络是否可达。"
+                f"你可以跳过此工具，基于已有信息继续工作。")
 
     dt = time.perf_counter() - _t0
     result_len = len(str(result))

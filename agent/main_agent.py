@@ -152,8 +152,35 @@ async def run_deep_agent(task_query: str, session_id: str):
                                           level="ERROR")
 
     except Exception as e:
-        log_event(session_id, "ERROR", f"执行异常: {e}", level="ERROR")
-        monitor._emit("error", f"执行主智能发生异常信息：{str(e)}")
+        err_msg = str(e)
+        err_type = type(e).__name__
+
+        # 分类
+        if any(k in err_msg.lower() for k in ("401", "403", "unauthorized", "invalid api key", "authentication")):
+            category = "AUTH"
+            hint = "API Key 无效或已过期，请检查 .env 中的 OPENAI_API_KEY"
+            level = "ERROR"
+            recoverable = False
+        elif any(k in err_msg.lower() for k in ("429", "rate limit", "too many requests")):
+            category = "RATE"
+            hint = "API 频率限制，建议稍后重试或降低请求频率"
+            level = "WARNING"
+            recoverable = True
+        elif any(k in err_msg.lower() for k in ("timeout", "timed out", "connection", "network")):
+            category = "NETWORK"
+            hint = "网络超时，请检查服务器网络连接或 API 端点可达性"
+            level = "WARNING"
+            recoverable = True
+        else:
+            category = "UNKNOWN"
+            hint = "请查看 trace.jsonl 获取完整错误信息"
+            level = "ERROR"
+            recoverable = False
+
+        log_event(session_id, category, f"{err_type}: {err_msg[:200]}",
+                  detail={"error_type": err_type, "hint": hint, "recoverable": recoverable},
+                  level=level)
+        monitor._emit("error", f"[{category}] {hint}: {err_msg[:200]}")
     finally:
         reset_session_context(session_dir_token, session_id_token)
 
