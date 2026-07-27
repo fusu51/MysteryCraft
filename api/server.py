@@ -317,4 +317,4 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str):
         manager.disconnect(websocket, thread_id)
 
 if __name__ == "__main__":
-    uvicorn.run("api.server:app", host="0.0.0.0", port=int(os.getenv("PORT", "9005")))
+    uvicorn.run("api.server:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")))
