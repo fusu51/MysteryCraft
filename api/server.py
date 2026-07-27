@@ -12,7 +12,6 @@ import shutil
 import os
 import time
 from contextlib import asynccontextmanager
-from tools.pdf_tools import convert_md_to_pdf as _convert_pdf
 from data.script_db import ensure_db
 
 
@@ -152,6 +151,7 @@ async def upload_files(files: List[UploadFile] = File(...), thread_id: str = For
 @app.post("/api/convert-pdf")
 async def convert_to_pdf(path: str):
     """将指定 Markdown 文件转为 PDF"""
+    from tools.pdf_tools import convert_md_to_pdf as _convert_pdf
     try:
         abs_path = Path(path).resolve()
         if not abs_path.is_relative_to(output_dir.resolve()):
