@@ -2,10 +2,18 @@ import type { TaskResponse, FileListResponse, FileItem } from "../types";
 
 const BASE = "";  // Vite proxy 自动转发 /api → localhost:8000
 
+function getAuthHeader(): Record<string, string> {
+    const token = localStorage.getItem("mysterycraft_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function submitTask(query: string, threadId?: string): Promise<TaskResponse> {
     const res = await fetch(`${BASE}/api/task`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeader(),
+        },
         body: JSON.stringify({ query, thread_id: threadId }),
     });
     if (!res.ok) throw new Error(`提交任务失败: ${res.status}`);

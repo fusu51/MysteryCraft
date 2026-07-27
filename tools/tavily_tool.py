@@ -17,6 +17,10 @@ tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 _tavily_counter: dict[str, int] = {}
 MAX_SEARCH = 8
 
+# 全局限流：两次搜索间隔 ≥ 2 秒，防止 API 额度瞬间耗尽
+_global_last_call = 0.0
+_GLOBAL_COOLDOWN = 2.0
+
 
 @tool
 def internet_search(
@@ -53,6 +57,13 @@ def internet_search(
 
     _tavily_counter[thread_id] += 1
     current = _tavily_counter[thread_id]
+
+    # 全局限流
+    global _global_last_call
+    elapsed = time.time() - _global_last_call
+    if elapsed < _GLOBAL_COOLDOWN:
+        time.sleep(_GLOBAL_COOLDOWN - elapsed)
+    _global_last_call = time.time()
 
     _t0 = time.perf_counter()
     monitor.report_tool(

@@ -3,13 +3,19 @@ import asyncio
 import sys
 import uvicorn
 from pathlib import Path
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form, Header, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import shutil
 import os
+import time
+from contextlib import asynccontextmanager
+
+
+_MAX_CONCURRENT = 3
+_semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
 
 # Add project root to sys.path
 current_dir = Path(__file__).resolve().parent
@@ -25,8 +31,6 @@ from api.middleware import TraceMiddleware
 from api.trace import log_event
 
 
-app = FastAPI(title="DeepAgents API")
-
 # 挂载输出目录，以便前端访问生成的静态文件
 # 假设输出目录位于项目根目录下的 output
 output_dir = project_root / "output"
@@ -35,6 +39,32 @@ output_dir.mkdir(exist_ok=True)
 # 定义上传目录 updated
 updated_dir = project_root / "updated"
 updated_dir.mkdir(exist_ok=True)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # === startup ===
+    setup_logging()
+
+    now = time.time()
+    cleaned = 0
+    for d in output_dir.iterdir():
+        if d.is_dir() and d.name.startswith("session_"):
+            if now - d.stat().st_mtime > 7 * 86400:
+                shutil.rmtree(d, ignore_errors=True)
+                cleaned += 1
+    if cleaned:
+        print(f"[Server] 已清理 {cleaned} 个过期 session")
+
+    loop = asyncio.get_running_loop()
+    manager.set_loop(loop)
+    # === startup end ===
+
+    yield  # 服务运行期间
+
+    # === shutdown ===
+
+app = FastAPI(title="MysteryCraft API", lifespan=lifespan)
+
 
 # 配置 CORS
 app.add_middleware(
@@ -52,20 +82,13 @@ class TaskRequest(BaseModel):
     query: str
     thread_id: str = None
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    服务启动时，获取当前运行的事件循环，并绑定到 WebSocket 管理器。
-    确保后台线程能通过 run_coroutine_threadsafe 准确投递消息。
-    """
-    setup_logging()
-    loop = asyncio.get_running_loop()
-    manager.set_loop(loop)
-    print(f"[Server] WebSocket Manager bound to loop: {id(loop)}")
-
 
 @app.post("/api/task")
-async def run_task(request: TaskRequest):
+async def run_task(request: TaskRequest, authorization: Optional[str] = Header(None)):
+    # 0. [认证]
+    expected = os.getenv("ACCESS_TOKEN", "")
+    if expected and authorization != f"Bearer {expected}":
+        raise HTTPException(status_code=401, detail="未授权：请在 Header 中提供有效的 Authorization: Bearer <token>")
     # 1. [输入校验]
     query = (request.query or "").strip()
     if not query:
@@ -76,8 +99,16 @@ async def run_task(request: TaskRequest):
     # 2. [ID 初始化]
     thread_id = (request.thread_id and request.thread_id != "string") and request.thread_id or str(uuid.uuid4())
 
-    # 3. [后台执行]
-    asyncio.create_task(run_deep_agent(query, thread_id))
+    # 3. [并发控制]
+    if _semaphore.locked():
+        return {"status": "busy", "message": f"服务器繁忙（上限 {_MAX_CONCURRENT} 并发），请稍后重试",
+                "thread_id": thread_id}
+
+    async def _guarded():
+        async with _semaphore:
+            await run_deep_agent(query, thread_id)
+
+    asyncio.create_task(_guarded())
 
     # 4. [立即响应]
     return {"status": "started", "thread_id": thread_id}
