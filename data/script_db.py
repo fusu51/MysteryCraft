@@ -10,6 +10,7 @@ DB_PATH = DB_DIR / "script.db"
 
 def get_connection():
     """获取数据库连接"""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
