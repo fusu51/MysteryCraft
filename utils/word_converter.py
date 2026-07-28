@@ -45,6 +45,10 @@ def convert_md_to_pdf(md_path: Path, pdf_path: Path) -> str:
 <head>
 <meta charset="utf-8">
 <style>
+  @font-face {{
+    font-family: 'Noto';
+    src: url('file:///usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc');
+  }}
   body {{ font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; padding: 40px; font-size: 12pt; line-height: 1.8; }}
   h1 {{ font-size: 18pt; }}
   h2 {{ font-size: 15pt; }}
