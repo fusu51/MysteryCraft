@@ -46,7 +46,11 @@ export default function App() {
         session_dir: "",
       });
     } catch (e) {
-      alert("网络连接失败，请检查后端服务是否启动");
+      if (e instanceof Error && e.message === "NEED_AUTH") {
+        // 认证弹窗已在上层弹出，不重复
+      } else {
+        alert("网络连接失败，请检查后端服务是否启动");
+      }
       dispatch({ type: "SET_LOADING", isLoading: false });
     }
   }, [query, dispatch, addSession]);

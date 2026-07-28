@@ -20,7 +20,7 @@ export async function submitTask(query: string, threadId?: string): Promise<Task
     // 401 认证失败 → 弹出提示
     if (res.status === 401) {
         alert("🔒 需要访问令牌\n\n为控制 API 成本，请联系 WX：19267826845 获取令牌。\n\n获取后在页面右上角 ⚙️ 设置中填入即可使用。");
-        throw new Error("需要认证");
+        throw new Error("NEED_AUTH");
     }
 
     if (!res.ok) throw new Error(`提交任务失败: ${res.status}`);
