@@ -4,8 +4,9 @@ const STATUS_MAP: Record<Status | "idle", { dot: string; label: string }> = {
     idle:          { dot: "bg-gray-500", label: "等待任务" },
     connected:     { dot: "bg-green-400", label: "已连接" },
     connecting:    { dot: "bg-yellow-400 animate-pulse", label: "连接中" },
-    disconnected:  { dot: "bg-red-500", label: "已断开" },
+    disconnected:  { dot: "bg-gray-500", label: "就绪" },
 };
+
 
 interface Props {
     status: Status;

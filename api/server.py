@@ -246,6 +246,8 @@ async def list_files(path: str):
         # 5. [遍历] 递归查找所有文件
         for file_path in abs_path.rglob("*"):
             if file_path.is_file():
+                if file_path.name == "trace.jsonl":    # ← 加这两行
+                    continue
                 # 计算相对路径，生成下载 URL
                 stat = file_path.stat()
                 files.append({
