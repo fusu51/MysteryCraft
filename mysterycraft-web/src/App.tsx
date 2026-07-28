@@ -6,10 +6,10 @@ import { useAppState, useDispatch } from "./context/AppContext";
 import TemplateSelector from "./components/TemplateSelector";
 import QueryInput from "./components/QueryInput";
 import SubmitButton from "./components/SubmitButton";
-import ConnectionStatus from "./components/ConnectionStatus";
 import ProgressPanel from "./components/ProgressPanel";
 import FileList from "./components/FileList";
 import SessionHistory from "./components/SessionHistory";
+import Header from "./components/Header";
 
 
 export default function App() {
@@ -58,18 +58,7 @@ export default function App() {
   return (
       <div className="min-h-screen bg-gray-950 text-gray-100">
         {/* Header */}
-        <header className="border-b border-gray-800 px-6 py-4">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🎭</span>
-              <h1 className="text-xl font-bold text-purple-400">MysteryCraft</h1>
-              <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">剧本杀 DM 创作助手</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ConnectionStatus status={connectionStatus} hasTask={!!threadId} />
-            </div>
-          </div>
-        </header>
+        <Header status={connectionStatus} hasTask={!!threadId} />
 
         {/* Main */}
         <main className="max-w-6xl mx-auto p-6">
