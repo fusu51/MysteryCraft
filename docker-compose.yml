@@ -6,6 +6,7 @@ services:
     container_name: mysterycraft
     ports:
       - "9005:9005"
+      - "8000:8000"
     volumes:
       - ./data:/app/data
       - ./output:/app/output
