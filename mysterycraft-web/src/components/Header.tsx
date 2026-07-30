@@ -27,10 +27,14 @@ export default function Header({ status, hasTask }: Props) {
                     <span className="text-2xl">🎭</span>
                     <h1 className="text-xl font-bold text-purple-400">MysteryCraft</h1>
                     <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">剧本杀 DM 创作助手</span>
+                    <a href="https://fusu.pw/article/17" target="_blank"
+                       className="text-xs text-gray-500 hover:text-purple-400 transition-colors ml-1">📖 示例</a>
+                    <a href="https://github.com/fusu51/MysteryCraft" target="_blank"
+                       className="text-xs text-gray-500 hover:text-purple-400 transition-colors ml-1">🐙 GitHub</a>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <ConnectionStatus status={status} hasTask={hasTask} />
+                    <ConnectionStatus status={status} hasTask={hasTask}/>
 
                     {/* 设置按钮 */}
                     <button
