@@ -106,6 +106,7 @@ async def run_deep_agent(task_query: str, session_id: str):
     """
 
     tool_count = 0
+    logic_validator_calls = 0
     agent_call_count = 0
 
     try:
@@ -129,9 +130,18 @@ async def run_deep_agent(task_query: str, session_id: str):
                             tool_count += 1
 
                             if tool_name == "task":
+                                subagent = tool_call["args"].get("subagent_type", "")
+
+                                # 逻辑校验硬拦截：最多 2 轮
+                                if subagent == "逻辑校验助手":
+                                    logic_validator_calls += 1
+                                    if logic_validator_calls > 2:
+                                        log_event(session_id, "TASK",
+                                                  f"逻辑校验已达 {logic_validator_calls - 1} 轮上限，跳过")
+                                        continue
+
                                 # 子智能体调用
                                 agent_call_count += 1
-                                subagent = tool_call["args"]["subagent_type"]
                                 desc_len = len(tool_call["args"].get("description", ""))
                                 log_event(session_id, "AGENT", f"{subagent} 调用 (#{agent_call_count})",
                                           detail={"desc_len": desc_len})
@@ -182,11 +192,16 @@ async def run_deep_agent(task_query: str, session_id: str):
             level = "ERROR"
             recoverable = False
 
+        if hasattr(model, 'report_failure'):
+            model.report_failure()
+
         log_event(session_id, category, f"{err_type}: {err_msg[:200]}",
                   detail={"error_type": err_type, "hint": hint, "recoverable": recoverable},
                   level=level)
         monitor._emit("error", f"[{category}] {hint}: {err_msg[:200]}")
     finally:
+        if hasattr(model, 'report_failure'):
+            model.report_success()
         reset_session_context(session_dir_token, session_id_token)
 
         # 统计输出文件
